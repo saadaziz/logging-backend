@@ -1,91 +1,112 @@
-# Logging Microservice (MVP)
 
-This microservice provides centralized logging functionality for internal applications (e.g., CareerGPT backend, future e-commerce service). It is designed to be lightweight, easy to deploy on cPanel, and supports future upgrades to JWT-based authentication.
+# Logging Backend Service (JWT Enabled)
 
----
-
-## Features
-
-- `POST /log` – Accepts JSON payloads for logging (`service`, `level`, `message`, `context`).
-- `GET /logs` – Returns latest logs in JSON format.
-- `GET /logs/download` – Downloads logs as a text file.
-- `POST /logs/purge` – Purges all logs (admin use).
-
-An admin UI (`logs.html`) is included for easy viewing, downloading, and purging of logs.
+This microservice provides a simple logging API with JWT authentication issued by the `identity-backend` service.
 
 ---
 
-## Security Overview
+## Setup
 
-### Current MVP (Static Key)
-
-- **Authentication**: Protected with a single API key (`LOG_SERVICE_KEY`) passed via Bearer token.
-- **Transport**: All endpoints are served over HTTPS.
-- **Usage**: Intended for *internal microservice-to-microservice* calls (e.g., backend → logging).
-
-### Pros
-
-- Simple to configure (single environment variable).
-- Low overhead, good for MVP and rapid iteration.
-- Works well when deployed **behind a firewall** or restricted by IP.
-
-### Cons (To be addressed in next phase)
-
-- Single shared secret – if leaked, all access is compromised.
-- No per-service or per-user identity (no audit trail).
-- No expiration or token rotation.
-
----
-
-## Future Security (Planned)
-
-Next phase will integrate `identity-backend` for **JWT-based service authentication**:
-
-- Signed JWTs issued by identity-backend.
-- Claims include service identity, audience, and expiry.
-- Short-lived tokens, revocable without redeploying services.
-
----
-
-## Deployment Context
-
-### Internal Use
-
-- Safe to deploy behind a firewall or VPC.
-- Ideal for private networks (e.g., internal company infrastructure).
-
-### External Use (Not Recommended)
-
-- Do **not** expose `/log`, `/logs`, or `/purge` endpoints publicly in current form.
-- If external exposure is required, wait for JWT integration phase or use reverse proxy with IP whitelisting.
-
----
-
-## Environment Variables
-
-Set these in cPanel or `.env` for local dev:
+### Environment Variables
+Set these in `.env` (for local) or in cPanel’s Python app environment:
 
 ```
-LOG_SERVICE_KEY=<your-secret-key>
+JWT_SECRET_KEY=<same as identity-backend>
+JWT_ISSUER=identity-backend
 LOG_DB_URL=sqlite:///logs.db
 ```
 
 ---
 
-## Local Development
+### Requirements
 
-1. Clone repo and create virtual environment
-2. Install dependencies (`pip install -r requirements.txt`)
-3. Set `LOG_SERVICE_KEY` in `.env`
-4. Run locally: `flask run --port 5001`
+Install dependencies:
+```
+pip install -r requirements.txt
+```
+
+Dependencies include:
+- Flask
+- SQLAlchemy
+- PyJWT
+- python-dotenv
+
+---
+
+### Deployment (cPanel)
+
+1. Upload the code to `/logging-backend` directory.
+2. Configure environment variables in **Setup Python App** (cPanel).
+3. Run **pip install** from cPanel.
+4. Restart Passenger:
+
+```
+touch tmp/restart.txt
+```
 
 ---
 
-## Roadmap
+## Health Check
 
-- [x] MVP with static key
-- [ ] JWT integration with identity-backend
-- [ ] Role-based access and claims
-- [ ] Log filtering, pagination, and analytics
+Verify the service is running:
+
+```
+https://aurorahours.com/logging-backend/ping
+```
+
+Should return `OK`.
 
 ---
+
+## Usage
+
+### 1. Obtain JWT Token from Identity Service
+
+```powershell
+$resp = Invoke-RestMethod -Uri "https://aurorahours.com/identity-backend/token" `
+  -Method POST `
+  -Headers @{"Content-Type"="application/json"} `
+  -Body '{"sub":"careergpt-backend","aud":"logging-service"}'
+
+$token = $resp.token
+```
+
+---
+
+### 2. Access Logging Endpoints
+
+#### Get Logs
+```powershell
+Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/logs" `
+  -Headers @{Authorization = "Bearer $token"}
+```
+
+#### Write Log
+```powershell
+Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/log" `
+  -Method POST `
+  -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
+  -Body '{"service":"careergpt","level":"INFO","message":"Test log","context":{"user":"test123"}}'
+```
+
+#### Purge Logs
+```powershell
+Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/logs/purge" `
+  -Method POST `
+  -Headers @{Authorization = "Bearer $token"}
+```
+
+#### Download Logs
+```
+https://aurorahours.com/logging-backend/logs/download
+```
+
+(Include `Authorization` header in API clients or curl.)
+
+---
+
+## Notes
+
+- JWTs expire based on settings in `identity-backend` (default 15 min).
+- `JWT_SECRET_KEY` must match between identity and logging services.
+- SQLite is used for simplicity; migrate to MySQL/Postgres for production.
