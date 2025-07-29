@@ -75,33 +75,66 @@ $token = $resp.token
 
 ### 2. Access Logging Endpoints
 
-#### Get Logs
+#### **Add Log Entry**
+
+**PowerShell**
+```powershell
+Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/log" `
+  -Method POST `
+  -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
+  -Body '{"service":"careergpt","level":"INFO","message":"New log entry from PS","context":{"user":"test123"}}'
+```
+
+**cURL**
+```bash
+curl -X POST "https://aurorahours.com/logging-backend/log"   -H "Authorization: Bearer $token"   -H "Content-Type: application/json"   -d '{"service":"careergpt","level":"INFO","message":"New log entry from curl","context":{"user":"test123"}}'
+```
+
+---
+
+#### **Retrieve Latest Logs**
+
+**PowerShell**
 ```powershell
 Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/logs" `
   -Headers @{Authorization = "Bearer $token"}
 ```
 
-#### Write Log
-```powershell
-Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/log" `
-  -Method POST `
-  -Headers @{"Authorization"="Bearer $token"; "Content-Type"="application/json"} `
-  -Body '{"service":"careergpt","level":"INFO","message":"Test log","context":{"user":"test123"}}'
+**cURL**
+```bash
+curl -X GET "https://aurorahours.com/logging-backend/logs"   -H "Authorization: Bearer $token"
 ```
 
-#### Purge Logs
+---
+
+#### **Purge All Logs**
+
+**PowerShell**
 ```powershell
 Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/logs/purge" `
   -Method POST `
   -Headers @{Authorization = "Bearer $token"}
 ```
 
-#### Download Logs
+**cURL**
+```bash
+curl -X POST "https://aurorahours.com/logging-backend/logs/purge"   -H "Authorization: Bearer $token"
+```
+
+---
+
+#### **Download Logs as Text File**
+
+**Browser or cURL**
 ```
 https://aurorahours.com/logging-backend/logs/download
 ```
 
-(Include `Authorization` header in API clients or curl.)
+Include Authorization header if using API client:
+
+```bash
+curl -X GET "https://aurorahours.com/logging-backend/logs/download"   -H "Authorization: Bearer $token" -o logs.txt
+```
 
 ---
 
