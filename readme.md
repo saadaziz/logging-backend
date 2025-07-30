@@ -138,6 +138,17 @@ curl -X GET "https://aurorahours.com/logging-backend/logs/download"   -H "Author
 
 ---
 
+## Debugging 
+
+### Make sure secrets match
+
+```bash
+Invoke-RestMethod -Uri "https://aurorahours.com/identity-backend/debug-env"
+```
+
+```bash
+Invoke-RestMethod -Uri "https://aurorahours.com/logging-backend/debug-env"
+```
 ## Notes
 
 - JWTs expire based on settings in `identity-backend` (default 15 min).

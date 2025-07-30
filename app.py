@@ -15,35 +15,28 @@ app = Flask(__name__)
 init_db()
 
 def validate_auth():
-    """
-    Hybrid validation:
-    - If Bearer token matches legacy SERVICE_KEY → allow
-    - Else treat token as JWT and validate claims
-    """
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        print("[DEBUG] Missing or malformed Authorization header", file=sys.stderr)
         return False, "Unauthorized"
 
     token = auth_header.split(" ")[1]
 
-    # Check legacy static key
-    if token == SERVICE_KEY:
-        print("[DEBUG] Authenticated via static key (legacy)", file=sys.stderr)
-        return True, "Static key auth OK"
-
-    # Validate JWT
+    # Validate JWT only
     try:
-        decoded = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"], audience="logging-service")
+        decoded = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=["HS256"],
+            audience="logging-service"
+        )
         if decoded.get("iss") != JWT_ISSUER:
-            print("[DEBUG] Invalid issuer in JWT", file=sys.stderr)
             return False, "Invalid issuer"
         return True, decoded
     except jwt.ExpiredSignatureError:
         return False, "Token expired"
     except jwt.InvalidTokenError as e:
-        print(f"[DEBUG] JWT validation failed: {e}", file=sys.stderr)
-        return False, "Invalid token"
+        return False, f"Invalid token: {str(e)}"
+
 
 # --- Routes ---
 
@@ -122,6 +115,23 @@ def purge_logs():
 @app.route("/ping", methods=["GET"])
 def ping():
     return "OK", 200
+
+@app.route("/debug-env")
+def debug_env():
+    import os
+    return {
+        "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
+        "JWT_ISSUER": os.getenv("JWT_ISSUER")
+    }
+
+@app.route("/debug-token", methods=["POST"])
+def debug_token():
+    token = request.json.get("token")
+    try:
+        decoded = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"], audience="logging-service")
+        return jsonify({"valid": True, "claims": decoded})
+    except Exception as e:
+        return jsonify({"valid": False, "error": str(e)}), 401
 
 if __name__ == "__main__":
     app.run(port=5001)
