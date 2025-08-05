@@ -60,6 +60,16 @@ Should return `OK`.
 
 ## Usage
 
+```bash
+C:\Users\saad0\Documents\source\logging-backend>curl https://aurorahours.com/identity-backend/test-token
+{"id_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1cm9yYWhvdXJzLmNvbS9pZGVudGl0eS1iYWNrZW5kIiwic3ViIjoidGVzdHVzZXIiLCJhdWQiOiJsb2dnaW5nLXNlcnZpY2UiLCJpYXQiOjE3NTQzNjkyNDgsImV4cCI6MTc1NDM3MTA0OCwic2NvcGUiOiJvcGVuaWQifQ.JPBstGfAXj_07ObDEOaYZoEI4hLSj1mcKqOPBkGAjio"}
+```
+
+```bash
+C:\Users\saad0\Documents\source\logging-backend>curl -X POST https://aurorahours.com/logging-backend/log -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1cm9yYWhvdXJzLmNvbS9pZGVudGl0eS1iYWNrZW5kIiwic3ViIjoidGVzdHVzZXIiLCJhdWQiOiJsb2dnaW5nLXNlcnZpY2UiLCJpYXQiOjE3NTQzNjU4ODQsImV4cCI6MTc1NDM2NzY4NCwic2NvcGUiOiJvcGVuaWQifQ.RoztF1DAaaviw2Q4XuI-5-d12vdjS-U02eoHQkwJg_c" -H "Content-Type: application/json" -d "{\"service\":\"manual-test\",\"level\":\"INFO\",\"message\":\"Log from CMD works\",\"context\":{\"source\":\"cmd-one-liner\"}}"
+{"status":"logged"}
+```
+
 ### 1. Obtain JWT Token from Identity Service
 
 ```powershell
@@ -75,7 +85,21 @@ $token = $resp.token
 
 ### 2. Access Logging Endpoints
 
+
 #### **Add Log Entry**
+
+**CMD**
+
+Get a JWT token:
+```bash
+curl https://aurorahours.com/identity-backend/test-token
+```
+
+```bash
+curl -X POST https://aurorahours.com/logging-backend/log -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2F1cm9yYWhvdXJzLmNvbS9pZGVudGl0eS1iYWNrZW5kIiwic3ViIjoidGVzdHVzZXIiLCJhdWQiOiJsb2dnaW5nLXNlcnZpY2UiLCJpYXQiOjE3NTQzNjU4ODQsImV4cCI6MTc1NDM2NzY4NCwic2NvcGUiOiJvcGVuaWQifQ.RoztF1DAaaviw2Q4XuI-5-d12vdjS-U02eoHQkwJg_c" -H "Content-Type: application/json" -d "{\"service\":\"manual-test\",\"level\":\"INFO\",\"message\":\"Log from CMD works\",\"context\":{\"source\":\"cmd-one-liner\"}}"
+{"error":"Invalid issuer"}
+```
+
 
 **PowerShell**
 ```powershell

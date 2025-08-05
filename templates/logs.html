@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Log Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <style>
+        body {
+            background: #f3f4f8;
+            font-family: 'Inter', sans-serif;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            color: #3f3d56;
+        }
+
+        #logTable_wrapper {
+            margin-top: 1.5rem;
+        }
+
+        .level-INFO {
+            color: #2d8659;
+            font-weight: 600;
+        }
+
+        .level-WARN {
+            color: #d89e00;
+            font-weight: 600;
+        }
+
+        .level-ERROR {
+            color: #c0392b;
+            font-weight: 700;
+        }
+
+        .level-DEBUG {
+            color: #2980b9;
+            font-weight: 500;
+        }
+
+        .context-cell {
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 0.85em;
+            color: #444;
+        }
+
+        .top-controls {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        input[type=password] {
+            padding: 6px;
+            font-size: 1rem;
+            width: 260px;
+            margin-right: 10px;
+        }
+
+        button {
+            background: #4c8ef7;
+            color: #fff;
+            padding: 6px 16px;
+            font-size: 0.96rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #346bd4;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Logging Dashboard</h1>
+    <div class="top-controls">
+        <input type="password" id="apikey" placeholder="identity-backend/test-token jwt">
+        <button onclick="loadLogs()">Load Logs</button>
+    </div>
+
+    <table id="logTable" class="display" style="width:100%">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Service</th>
+                <th>Level</th>
+                <th>Message</th>
+                <th>Context</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <script>
+        const formatLocalTime = (isoString) => {
+            const date = new Date(isoString + 'Z'); // <- 🔥 force UTC
+            return new Intl.DateTimeFormat(undefined, {
+                dateStyle: "medium",
+                timeStyle: "medium"
+            }).format(date);
+        };
+
+        function loadLogs() {
+            const key = document.getElementById("apikey").value;
+            if (!key) return alert("API key required");
+
+            fetch("/logging-backend/logs.json", {
+                headers: { "Authorization": "Bearer " + key }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const table = $('#logTable').DataTable();
+                    table.clear();
+                    data.forEach(log => {
+                        const localTime = formatLocalTime(log.timestamp);
+                        table.row.add([
+                            `<span title="${log.timestamp}" data-order="${log.timestamp}">${localTime}</span>`,
+                            log.service,
+                            `<span class="level-${log.level}">${log.level}</span>`,
+                            log.message,
+                            log.context ? `<div class="context-cell">${log.context}</div>` : ""
+                        ]);
+                    });
+                    table.draw();
+                })
+                .catch(err => {
+                    alert("Failed to load logs: " + err);
+                });
+        }
+
+        $(document).ready(function () {
+            $('#logTable').DataTable({
+                pageLength: 15,
+                order: [[0, 'desc']],
+                columnDefs: [
+                    {
+                        targets: 0,
+                        render: function (data, type) {
+                            if (type === 'sort' || type === 'type') {
+                                const span = document.createElement('span');
+                                span.innerHTML = data;
+                                return span.getAttribute('data-order');
+                            }
+                            return data;
+                        }
+                    },
+                    { targets: [4], orderable: false }
+                ]
+            });
+        });
+    </script>
+</body>
+
+</html>

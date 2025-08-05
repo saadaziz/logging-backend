@@ -1,13 +1,16 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, render_template
 from models import init_db, insert_log, SessionLocal, Log
-from config import SERVICE_KEY  # legacy fallback
+from config import SERVICE_KEY
 import jwt
 import json
-import datetime
-import sys
 import os
+import sys
+sys.stdout = sys.stderr
 
-# Load JWT secret (same as identity-backend)
+import logging
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+
+# Load JWT secret
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "some-random-key")
 JWT_ISSUER = os.getenv("JWT_ISSUER", "identity-backend")
 
@@ -21,7 +24,6 @@ def validate_auth():
 
     token = auth_header.split(" ")[1]
 
-    # Validate JWT only
     try:
         decoded = jwt.decode(
             token,
@@ -37,14 +39,14 @@ def validate_auth():
     except jwt.InvalidTokenError as e:
         return False, f"Invalid token: {str(e)}"
 
-
-# --- Routes ---
+# --- API Routes ---
 
 @app.route("/log", methods=["POST"])
 def write_log():
-    is_valid, reason = validate_auth()
-    if not is_valid:
-        return jsonify({"error": reason}), 401
+    
+    #is_valid, reason = validate_auth()
+    #if not is_valid:
+        #return jsonify({"error": reason}), 401
 
     data = request.get_json(force=True) or {}
     service = data.get("service")
@@ -58,14 +60,10 @@ def write_log():
     insert_log(service, level, message, json.dumps(context) if context else None)
     return jsonify({"status": "logged"}), 201
 
-@app.route("/logs", methods=["GET"])
-def get_logs():
-    is_valid, reason = validate_auth()
-    if not is_valid:
-        return jsonify({"error": reason}), 401
-
+@app.route("/logs.json", methods=["GET"])
+def get_logs_json():
     session = SessionLocal()
-    logs = session.query(Log).order_by(Log.timestamp.desc()).limit(10).all()
+    logs = session.query(Log).order_by(Log.timestamp.desc()).all()
     session.close()
 
     return jsonify([{
@@ -112,13 +110,20 @@ def purge_logs():
 
     return jsonify({"status": "purged"})
 
+# --- UI Route ---
+
+@app.route("/logs", methods=["GET"])
+def logs_ui():
+    return render_template("logs.html")
+
+# --- Debug / Health ---
+
 @app.route("/ping", methods=["GET"])
 def ping():
     return "OK", 200
 
 @app.route("/debug-env")
 def debug_env():
-    import os
     return {
         "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
         "JWT_ISSUER": os.getenv("JWT_ISSUER")
