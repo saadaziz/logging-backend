@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, Response, render_template
 from models import init_db, insert_log, SessionLocal, Log
-from config import SERVICE_KEY
+from config import JWT_SECRET_KEY, JWT_ISSUER
 import jwt
 import json
 import os
@@ -9,10 +9,6 @@ sys.stdout = sys.stderr
 
 import logging
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-
-# Load JWT secret
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "some-random-key")
-JWT_ISSUER = os.getenv("JWT_ISSUER", "identity-backend")
 
 app = Flask(__name__)
 init_db()
@@ -43,10 +39,9 @@ def validate_auth():
 
 @app.route("/log", methods=["POST"])
 def write_log():
-    
-    #is_valid, reason = validate_auth()
-    #if not is_valid:
-        #return jsonify({"error": reason}), 401
+    is_valid, reason = validate_auth()
+    if not is_valid:
+        return jsonify({"error": reason}), 401
 
     data = request.get_json(force=True) or {}
     service = data.get("service")
